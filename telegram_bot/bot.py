@@ -80,9 +80,24 @@ async def create_task(message: types.Message):
 async def list_tasks(message: types.Message):
     """
     Handler function for the /list command.
-    Retrieves and displays the list of all tasks.
+    Retrieves and displays the list of all tasks with pagination.
+    Pagination is implemented by sending a message with the page number as a parameter.
+    The default page number is 1.
+    Example: /list <page_number>
     """
-    response = requests.get(API_BASE_URL)
+    page_number = 1  # Default page number
+
+    command_parts = message.text.split(" ")
+    if len(command_parts) > 1:
+        try:
+            page_number = int(command_parts[1])
+            if page_number < 1:
+                page_number = 1
+        except ValueError:
+            await message.reply("Incorrect page number.")
+            return
+
+    response = requests.get(API_BASE_URL + f"?page={page_number}")
 
     if response.status_code == 200:
         tasks = response.json()
@@ -90,10 +105,10 @@ async def list_tasks(message: types.Message):
             tasks_text = "\n\n".join(
                 [
                     f'{task["id"]}. {task["title"]} ({task["due_date"]})'
-                    for task in tasks
+                    for task in tasks["results"]
                 ]
             )
-            await message.reply(f"Task List:\n\n{tasks_text}")
+            await message.reply(f"Task list (Page {page_number}):\n\n{tasks_text}")
         else:
             await message.reply("The task list is empty.")
     else:
